@@ -1,91 +1,125 @@
-/*
-** EPITECH PROJECT, 2026
-** get_next_line
-** File description:
-** Function that returns a line read from a file descriptor
-*/
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   get_next_line.c                                    :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: mmesgari <mmesgari@student.42.fr>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/01/08 11:14:21 by mmesgari          #+#    #+#             */
+/*   Updated: 2026/01/08 14:05:17 by mmesgari         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
 
 #include "get_next_line.h"
 
-static char *extract_line(char *buffer) {
-  char *newline;
-  char *line;
-  char *temp;
-  size_t len;
-  size_t i;
+char	*ft_read_to_left_str(int fd, char *left_str)
+{
+	char	*buff;
+	int		rd_bytes;
 
-  newline = ft_strchr(buffer, '\n');
-  if (!newline) {
-    line = ft_strdup(buffer);
-    buffer[0] = '\0';
-    return (line);
-  }
-  len = newline - buffer + 1;
-  line = malloc(len + 1);
-  if (!line)
-    return (NULL);
-  i = 0;
-  while (i < len) {
-    line[i] = buffer[i];
-    i++;
-  }
-  line[i] = '\0';
-  temp = ft_strdup(newline + 1);
-  if (!temp) {
-    free(line);
-    return (NULL);
-  }
-  i = 0;
-  while (temp[i]) {
-    buffer[i] = temp[i];
-    i++;
-  }
-  buffer[i] = '\0';
-  free(temp);
-  return (line);
+	buff = malloc((BUFFER_SIZE + 1) * sizeof(char));
+	if (!buff)
+		return (NULL);
+	rd_bytes = 1;
+	while (!ft_strchr(left_str, '\n') && rd_bytes != 0)
+	{
+		rd_bytes = read(fd, buff, BUFFER_SIZE);
+		if (rd_bytes == -1)
+		{
+			free(buff);
+			free(left_str);
+			return (NULL);
+		}
+		buff[rd_bytes] = '\0';
+		left_str = ft_strjoin(left_str, buff);
+	}
+	free(buff);
+	return (left_str);
 }
 
-static int read_to_buffer(int fd, char *buffer, char *temp) {
-  ssize_t bytes_read;
-  size_t len;
-  size_t i;
+char	*ft_get_line(char *left_str)
+{
+	int		i;
+	char	*str;
 
-  bytes_read = read(fd, temp, BUFFER_SIZE);
-  if (bytes_read < 0)
-    return (-1);
-  if (bytes_read == 0)
-    return (0);
-  len = ft_strlen(buffer);
-  i = 0;
-  while (i < (size_t)bytes_read) {
-    buffer[len + i] = temp[i];
-    i++;
-  }
-  buffer[len + i] = '\0';
-  return (1);
+	i = 0;
+	if (!left_str[i])
+		return (NULL);
+	while (left_str[i] && left_str[i] != '\n')
+		i++;
+	str = (char *)malloc(sizeof(char) * (i + 2));
+	if (!str)
+		return (NULL);
+	i = 0;
+	while (left_str[i] && left_str[i] != '\n')
+	{
+		str[i] = left_str[i];
+		i++;
+	}
+	if (left_str[i] == '\n')
+		str[i++] = '\n';
+	str[i] = '\0';
+	return (str);
 }
 
-char *get_next_line(int fd) {
-  static char buffer[70000];
-  char temp[BUFFER_SIZE + 1];
-  char *line;
-  int read_status;
+char	*ft_new_left_str(char *left_str)
+{
+	int		i;
+	int		j;
+	char	*str;
 
-  if (fd < 0 || BUFFER_SIZE <= 0)
-    return (NULL);
-  while (1) {
-    if (ft_strchr(buffer, '\n'))
-      return (extract_line(buffer));
-    read_status = read_to_buffer(fd, buffer, temp);
-    if (read_status < 0)
-      return (NULL);
-    if (read_status == 0) {
-      if (buffer[0] == '\0')
-        return (NULL);
-      line = ft_strdup(buffer);
-      buffer[0] = '\0';
-      return (line);
-    }
-  }
-  return (NULL);
+	i = 0;
+	while (left_str[i] && left_str[i] != '\n')
+		i++;
+	if (!left_str[i])
+	{
+		free(left_str);
+		return (NULL);
+	}
+	str = (char *)malloc(sizeof(char) * (ft_strlen(left_str) - i + 1));
+	if (!str)
+		return (NULL);
+	i++;
+	j = 0;
+	while (left_str[i])
+		str[j++] = left_str[i++];
+	str[j] = '\0';
+	free(left_str);
+	return (str);
 }
+
+char	*get_next_line(int fd)
+{
+	char		*line;
+	static char	*left_str;
+
+	if (fd < 0 || BUFFER_SIZE <= 0)
+		return (NULL);
+	left_str = ft_read_to_left_str(fd, left_str);
+	if (!left_str)
+		return (NULL);
+	line = ft_get_line(left_str);
+	left_str = ft_new_left_str(left_str);
+	return (line);
+}
+
+// #include <fcntl.h>
+// #include <stdio.h>
+// #include "get_next_line.h"
+
+// int main(void)
+// {
+//     int     fd;
+//     char    *line;
+
+//     fd = open("test.txt", O_RDONLY);
+//     if (fd == -1)
+//         return (1);
+//     while ((line = get_next_line(fd)) != NULL)
+//     {
+//         printf("%s", line);
+//         free(line);
+//     }
+//     close(fd);
+//     return (0);
+// }
